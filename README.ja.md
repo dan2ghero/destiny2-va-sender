@@ -1,4 +1,4 @@
-# destiny2-va-sender v1.0.6
+# destiny2-va-sender
 
 **動作対象：Windows 11のみ（Works only on Windows 11）**
 
