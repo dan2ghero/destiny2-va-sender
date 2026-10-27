@@ -1,4 +1,4 @@
-# destiny2-va-sender v1.0.6
+# destiny2-va-sender
 
 **Supported OS: Windows 11 only.**
 
