@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -6,6 +6,14 @@ using System.Text;
 
 namespace DestinySender {
  public class Config {
+  public int AudioSyncMs {get;set;}=0;
+  public string AudioFilter() {
+   if(AudioSyncMs < -2000||AudioSyncMs > 2000)throw new ArgumentException(T("Audio sync must be between -2000 and +2000 ms."));
+   string value="aresample=async=1000:first_pts=0";
+   if(AudioSyncMs<0)value+=",atrim=start="+(-AudioSyncMs/1000.0).ToString("0.###",System.Globalization.CultureInfo.InvariantCulture)+",asetpts=PTS-STARTPTS";
+   else if(AudioSyncMs>0)value+=",adelay="+AudioSyncMs+":all=1";
+   return value;
+  }
   public string Language {get;set;}="ENG";
   public string T(string english,params object[] args) {return I18n.T(Language,english,args);}
   public string Protocol {get;set;}="SRT";
@@ -68,7 +76,7 @@ namespace DestinySender {
    return a;
   }
   public List<string> Command(string url, bool test=false, bool synthetic=false) {
-   var a=new List<string>{"-hide_banner","-loglevel","warning","-nostats","-thread_queue_size","64","-probesize","32","-analyzeduration","0","-f","s16le","-ar","48000","-ac","2","-i","pipe:0","-filter_complex",Filter(synthetic),"-map","[v]","-map","0:a:0","-af","aresample=async=1000:first_pts=0"};
+   var a=new List<string>{"-hide_banner","-loglevel","warning","-nostats","-thread_queue_size","64","-probesize","32","-analyzeduration","0","-f","s16le","-ar","48000","-ac","2","-i","pipe:0","-filter_complex",Filter(synthetic),"-map","[v]","-map","0:a:0","-af",AudioFilter()};
    a.AddRange(Encoding()); if(test) a.AddRange(new[]{"-t","20"});
    a.AddRange(new[]{"-shortest","-f",test?(Protocol=="RTMP"?"flv":"mpegts"):Muxer,test?"pipe:1":url}); return a;
   }

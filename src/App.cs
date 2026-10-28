@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -12,6 +12,12 @@ using System.Windows.Forms;
 
 namespace DestinySender {
  static class Theme {
+  public static string Version {get{return "v"+typeof(Theme).Assembly.GetName().Version.ToString(3);}}
+  public static Control Footer(string text) {
+   var panel=new TableLayoutPanel {Dock=DockStyle.Fill,ColumnCount=2,RowCount=1,Margin=Padding.Empty};
+   panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,180));
+   panel.Controls.Add(Label(text,8,true),0,0);var version=Label(Version,8,true);version.Anchor=AnchorStyles.Top|AnchorStyles.Right;panel.Controls.Add(version,1,0);return panel;
+  }
   public static Color Bg=Color.FromArgb(18,21,28), Panel=Color.FromArgb(28,33,43), Text=Color.FromArgb(233,237,245), Muted=Color.FromArgb(151,162,183), Accent=Color.FromArgb(116,151,245);
   public static Label Label(string text,int size=10,bool muted=false) {return new Label {Text=text,ForeColor=muted?Muted:Text,AutoSize=true,Font=new Font("Segoe UI",size,FontStyle.Regular),Margin=new Padding(0,2,0,2)};}
   public static Button Button(string text,bool accent=false) {var b=new Button {Text=text,Height=44,Width=120,FlatStyle=FlatStyle.Flat,BackColor=accent?Accent:Panel,ForeColor=accent?Bg:Text,Font=new Font("Segoe UI",10,FontStyle.Bold),Cursor=Cursors.Hand,Margin=new Padding(0,0,12,0)};b.FlatAppearance.BorderSize=0;return b;}
@@ -37,7 +43,7 @@ namespace DestinySender {
    root.Controls.Add(Theme.Label("INFO",10,true),0,5);info.ReadOnly=true;root.Controls.Add(info,0,6);
    var buttons=new FlowLayoutPanel {Dock=DockStyle.Fill,WrapContents=false};buttons.Controls.AddRange(new Control[]{settings,test,start});root.Controls.Add(buttons,0,8);
    root.Controls.Add(status,0,9);root.Controls.Add(Theme.Label("SESSION LOG",9,true),0,10);logs.ReadOnly=true;root.Controls.Add(logs,0,11);
-   root.Controls.Add(Theme.Label("Windows 11 · destiny2.exe / process tree audio",8,true),0,12);
+   root.Controls.Add(Theme.Footer("Windows 10/11 · destiny2.exe / process tree audio"),0,12);
    Controls.Add(root);
    settings.Click+=(s,e)=>{using(var dialog=new SettingsForm(config)) if(dialog.ShowDialog(this)==DialogResult.OK) {config=dialog.Result;Save();ApplyLanguage();}};
    url.TextChanged+=(s,e)=>RefreshInfo();
@@ -48,7 +54,7 @@ namespace DestinySender {
   }
   Config LoadSettings() {try {var c=new JavaScriptSerializer().Deserialize<Config>(File.ReadAllText(configFile)); c.MigrateLegacySettings();Validate(c);return c;}catch{return new Config();}}
   static void Validate(Config c) {
-   if(!new[]{"SRT","RTMP"}.Contains(c.Protocol)||!new[]{"ENG","JPN"}.Contains(c.Language)||!new[]{"960x540","1280x720","1920x1080"}.Contains(c.Size)||!new[]{30,60}.Contains(c.Fps)||!new[]{"CROP","COMPRESS","LETTER-BOX"}.Contains(c.Adjustment)||!new[]{"H264 (CPU)","H264 (NVEnc)","H264 (AMD)"}.Contains(c.Video)||!new[]{"AAC","Opus"}.Contains(c.Audio))throw new ArgumentException(c.T("Invalid settings."));c.Encoding();
+   if(!new[]{"SRT","RTMP"}.Contains(c.Protocol)||!new[]{"ENG","JPN"}.Contains(c.Language)||!new[]{"960x540","1280x720","1920x1080"}.Contains(c.Size)||!new[]{30,60}.Contains(c.Fps)||!new[]{"CROP","COMPRESS","LETTER-BOX"}.Contains(c.Adjustment)||!new[]{"H264 (CPU)","H264 (NVEnc)","H264 (AMD)"}.Contains(c.Video)||!new[]{"AAC","Opus"}.Contains(c.Audio))throw new ArgumentException(c.T("Invalid settings."));c.Encoding();c.AudioFilter();
   }
   void Save() {try {File.WriteAllText(configFile,new JavaScriptSerializer().Serialize(config));}catch(Exception e){Log(config.T("Could not save settings: {0}",e.Message));}}
   void ApplyLanguage() {I18n.Apply(this,config.Language);if(!busy)status.Text=config.T("READY");RefreshInfo();}
@@ -65,14 +71,14 @@ namespace DestinySender {
   }
   async Task Run(bool preview) {
    try {
-    if(Environment.OSVersion.Version.Build<20348)throw new InvalidOperationException(config.T("Process audio capture requires Windows build 20348 or later. Use Windows 11."));
+    Compatibility.EnsureSupported();
     if(!Bootstrap.Ready)await PrepareTools();
     Validate(config);string dest=url.Text.Trim();
     if(!preview&&!config.IsOutputUrlValid(dest)) {
      string expected=config.Protocol=="SRT"?"srt://":config.T("rtmp:// or rtmps://");
      throw new ArgumentException(config.T("Enter an OUTPUT URL starting with {0}.",expected));
     }
-    busy=true;settings.Enabled=false;test.Enabled=false;url.ReadOnly=true;start.Text=config.T("STOP");status.Text=config.T(preview?"TESTING · 20 SECONDS":"SENDING");logs.Clear();
+    busy=true;settings.Enabled=false;test.Enabled=false;url.ReadOnly=true;start.Text=config.T("STOP");status.Text=config.T(preview?"TESTING · 20 SECONDS":"SENDING");logs.Clear();Log(Compatibility.Description);
     session=new Session(Log);session.Start(config,dest,preview);await session.Completion;
    } catch(Exception e) {string message=I18n.T(config.Language,e.Message);Log(message);if(!IsDisposed&&!Disposing)MessageBox.Show(this,message,"destiny2-va-sender",MessageBoxButtons.OK,MessageBoxIcon.Information);}
    finally {session?.Dispose();session=null;busy=false;if(!IsDisposed){settings.Enabled=true;test.Enabled=true;url.ReadOnly=false;start.Text=config.T("START");status.Text=config.T("READY");}}
@@ -81,26 +87,29 @@ namespace DestinySender {
  sealed class SettingsForm:Form {
   public Config Result;
   readonly ComboBox language=Combo("ENG","JPN"),protocol=Combo("RTMP","SRT"),size=Combo("960x540","1280x720","1920x1080"),fps=Combo("30","60"),adjust=Combo("CROP","COMPRESS","LETTER-BOX"),video=Combo("H264 (CPU)","H264 (NVEnc)","H264 (AMD)"),audio=Combo("AAC","Opus");
+  readonly NumericUpDown audioSync=new NumericUpDown {Minimum=-2000,Maximum=2000,Increment=10,Dock=DockStyle.Fill,BackColor=Theme.Panel,ForeColor=Theme.Text};
   bool custom;string customText;Label note=Theme.Label("",9,true);Button customButton=Theme.Button("CUSTOM");
   static ComboBox Combo(params string[] values) {var c=new ComboBox {DropDownStyle=ComboBoxStyle.DropDownList,Dock=DockStyle.Fill,BackColor=Theme.Panel,ForeColor=Theme.Text,FlatStyle=FlatStyle.Flat};c.Items.AddRange(values);return c;}
   public SettingsForm(Config original) {
-   Theme.Form(this,"SETTING / destiny2-va-sender",new Size(650,660));FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;MinimizeBox=false;StartPosition=FormStartPosition.CenterParent;
+   Theme.Form(this,"SETTING / destiny2-va-sender",new Size(700,730));FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;MinimizeBox=false;StartPosition=FormStartPosition.CenterParent;
    Result=original;custom=original.CustomEnabled;customText=original.Custom;
-   var root=new TableLayoutPanel {Dock=DockStyle.Fill,Padding=new Padding(28),ColumnCount=2,RowCount=12};root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,180));root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
+   var root=new TableLayoutPanel {Dock=DockStyle.Fill,Padding=new Padding(28),ColumnCount=2,RowCount=13};root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,180));root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
    root.RowStyles.Add(new RowStyle(SizeType.Absolute,55));root.Controls.Add(Theme.Label("SETTING",22),0,0);root.SetColumnSpan(root.GetControlFromPosition(0,0),2);
    var boxes=new[]{language,protocol,size,fps,adjust,video,audio};var labels=new[]{"LANGUAGE","PROTOCOL","OUTPUT-SIZE","FPS","ADJUSTMENT","VIDEO CODEC","AUDIO CODEC"};
    for(int i=0;i<boxes.Length;i++){root.RowStyles.Add(new RowStyle(SizeType.Absolute,49));root.Controls.Add(Theme.Label(labels[i],9,true),0,i+1);root.Controls.Add(boxes[i],1,i+1);}
    language.SelectedItem=original.Language;protocol.SelectedItem=original.Protocol;size.SelectedItem=original.Size;fps.SelectedItem=original.Fps.ToString();adjust.SelectedItem=original.Adjustment;video.SelectedItem=original.Video;audio.SelectedItem=original.Audio;
-   root.RowStyles.Add(new RowStyle(SizeType.Absolute,52));root.Controls.Add(note,0,8);root.SetColumnSpan(note,2);
-   root.RowStyles.Add(new RowStyle(SizeType.Absolute,52));root.Controls.Add(customButton,0,9);var customHint=Theme.Label("Edit video / audio output options",9,true);root.Controls.Add(customHint,1,9);
-   var bottom=new FlowLayoutPanel {Dock=DockStyle.Fill,FlowDirection=FlowDirection.RightToLeft};var save=Theme.Button("SAVE",true);var cancel=Theme.Button("CANCEL");bottom.Controls.AddRange(new Control[]{save,cancel});root.RowStyles.Add(new RowStyle(SizeType.Absolute,48));root.Controls.Add(bottom,0,10);root.SetColumnSpan(bottom,2);Controls.Add(root);
+   audioSync.Value=original.AudioSyncMs;root.RowStyles.Add(new RowStyle(SizeType.Absolute,38));root.Controls.Add(Theme.Label("AUDIO SYNC (ms)",9,true),0,8);root.Controls.Add(audioSync,1,8);
+   root.RowStyles.Add(new RowStyle(SizeType.Absolute,30));var syncHint=Theme.Label("Negative: advance audio · Positive: delay audio",9,true);root.Controls.Add(syncHint,0,9);root.SetColumnSpan(syncHint,2);
+   root.RowStyles.Add(new RowStyle(SizeType.Absolute,52));root.Controls.Add(note,0,10);root.SetColumnSpan(note,2);
+   root.RowStyles.Add(new RowStyle(SizeType.Absolute,52));root.Controls.Add(customButton,0,11);var customHint=Theme.Label("Edit video / audio output options",9,true);root.Controls.Add(customHint,1,11);
+   var bottom=new FlowLayoutPanel {Dock=DockStyle.Fill,FlowDirection=FlowDirection.RightToLeft};var save=Theme.Button("SAVE",true);var cancel=Theme.Button("CANCEL");bottom.Controls.AddRange(new Control[]{save,cancel});root.RowStyles.Add(new RowStyle(SizeType.Absolute,48));root.Controls.Add(bottom,0,12);root.SetColumnSpan(bottom,2);Controls.Add(root);
    protocol.SelectedIndexChanged+=(s,e)=>UpdateAudio();size.SelectedIndexChanged+=(s,e)=>UpdateNote();fps.SelectedIndexChanged+=(s,e)=>UpdateNote();
    language.SelectedIndexChanged+=(s,e)=>{I18n.Apply(this,(string)language.SelectedItem);UpdateNote();};
    customButton.Click+=(s,e)=>{using(var d=new CustomForm(custom,customText,Args.Join(Current(false).Encoding()),(string)language.SelectedItem))if(d.ShowDialog(this)==DialogResult.OK){custom=d.EnabledCustom;customText=d.Value;UpdateNote();}};
    save.Click+=(s,e)=>{try {var c=Current();c.Encoding();Result=c;DialogResult=DialogResult.OK;}catch(Exception ex){MessageBox.Show(this,ex.Message,"CUSTOM");}};
    cancel.Click+=(s,e)=>DialogResult=DialogResult.Cancel;AcceptButton=save;CancelButton=cancel;I18n.Apply(this,original.Language);UpdateAudio();
   }
-  Config Current(bool includeCustom=true) {return new Config{Language=(string)language.SelectedItem,Protocol=(string)protocol.SelectedItem,Size=(string)size.SelectedItem,Fps=int.Parse((string)fps.SelectedItem),Adjustment=(string)adjust.SelectedItem,Video=(string)video.SelectedItem,Audio=(string)audio.SelectedItem,CustomEnabled=includeCustom&&custom,Custom=customText};}
+  Config Current(bool includeCustom=true) {return new Config{AudioSyncMs=(int)audioSync.Value,Language=(string)language.SelectedItem,Protocol=(string)protocol.SelectedItem,Size=(string)size.SelectedItem,Fps=int.Parse((string)fps.SelectedItem),Adjustment=(string)adjust.SelectedItem,Video=(string)video.SelectedItem,Audio=(string)audio.SelectedItem,CustomEnabled=includeCustom&&custom,Custom=customText};}
   void UpdateAudio() {string p=(string)protocol.SelectedItem;audio.Enabled=p=="SRT";if(p=="RTMP")audio.SelectedItem="AAC";UpdateNote();}
   void UpdateNote() {if(size.SelectedItem==null||fps.SelectedItem==null)return;var c=Current();note.Text=custom?c.T("CUSTOM enabled · overrides encoder, bitrate and audio"):c.T("CBR {0} Mbps · GOP {1} (1 sec) · B frames 0 · Audio 128 kbps",(c.Bitrate/1000.0).ToString("0.#",System.Globalization.CultureInfo.InvariantCulture),c.Fps);customButton.Text=c.T(custom?"CUSTOM · ON":"CUSTOM");}
  }

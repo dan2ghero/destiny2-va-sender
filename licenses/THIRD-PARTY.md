@@ -1,4 +1,4 @@
-# Third-party software
+﻿# Third-party software
 
 The root LICENSE applies to the independently implemented destiny2-va-sender application and its source code. It does not change third-party software licenses or rights in the game, its branding, or captured content.
 

@@ -1,6 +1,7 @@
-# destiny2-va-sender
+﻿# destiny2-va-sender v1.1.0
 
-**Supported OS: Windows 11 only.**
+**Supported OS: Windows 10 22H2 / Windows 11 (x64).**
+
 
 Send Destiny 2 video and process-tree audio over SRT or RTMP.
 
@@ -18,6 +19,19 @@ Send a player's game video and audio to a video server operated by an event prod
 6. Use TEST for a 20-second local preview in ffplay. Startup and buffering add a little time. TEST does not publish to the destination server.
 
 On first launch, the app downloads the pinned official BtbN FFmpeg build (about 211 MB) and verifies its SHA-256.
+
+## Audio / video sync
+
+SETTING → AUDIO SYNC (ms) adjusts audio relative to video. Default: 0. Range: -2000 to +2000 ms.
+
+- If audio is about 0.2 seconds late relative to video, try **-200 ms**.
+- Negative values advance audio by trimming that duration from the beginning and rebasing its timestamps.
+- Positive values delay audio by adding silence at the beginning.
+- Use small changes and compare a visible action with its sound. Test the actual receiving player, too.
+
+This corrects relative A/V alignment. It does not remove network, server or player latency when comparing the game PC's direct sound with the received stream. The raw audio input is already initialized before the video filter, so swapping the order alone is not a demonstrated fix for a 200 ms offset.
+
+Audio sync is applied in normal and CUSTOM modes and is saved with your settings.
 
 ## Language
 
@@ -71,3 +85,14 @@ All application source is under src. To rebuild on Windows with .NET SDK 8 and .
 No NuGet package restore is required. The execution policy option applies only to that PowerShell process.
 
 See README.ja.md for Japanese instructions.
+
+## Confirmed environments
+
+User-reported successful operation:
+
+| OS | GPU |
+|---|---|
+| Windows 10 22H2 / 19045.6466 | RTX 2060 6GB |
+| Windows 11 Home 25H2 / 26200.9711 | RTX 3060 12GB |
+
+These are confirmed examples, not a guarantee for every hardware, driver, or application combination. No additional virtual audio driver is required.

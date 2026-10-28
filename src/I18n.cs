@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Windows.Forms;
@@ -11,10 +11,13 @@ namespace DestinySender {
    {"START","開始"},{"STOP","停止"},{"TEST · 20s","テスト · 20秒"},
    {"READY","待機中"},{"STOPPING…","停止中…"},{"SENDING","送信中"},
    {"TESTING · 20 SECONDS","テスト中 · 20秒"},{"SESSION LOG","動作ログ"},
-   {"Windows 11 · destiny2.exe / process tree audio","Windows 11 · destiny2.exe / プロセスツリー音声"},
+   {"Windows 10/11 · destiny2.exe / process tree audio","Windows 10/11 · destiny2.exe / プロセスツリー音声"},
    {"SETTING / destiny2-va-sender","設定 / destiny2-va-sender"},
    {"PROTOCOL","転送方式"},{"OUTPUT-SIZE","出力サイズ"},{"FPS","フレームレート"},
    {"ADJUSTMENT","映像補正"},{"VIDEO CODEC","映像コーデック"},{"AUDIO CODEC","音声コーデック"},
+      {"AUDIO SYNC (ms)","音声同期補正 (ms)"},
+   {"Negative: advance audio · Positive: delay audio","負の値: 音声を先行 / 正の値: 音声を遅延"},
+   {"Audio sync must be between -2000 and +2000 ms.","音声同期補正は-2000～+2000msで設定してください。"},
    {"LANGUAGE","言語 / LANGUAGE"},{"SAVE","保存"},{"CANCEL","キャンセル"},{"APPLY","適用"},
    {"CUSTOM","カスタム"},{"CUSTOM · ON","カスタム · 有効"},
    {"Edit video / audio output options","映像・音声の出力オプションを直接編集"},
@@ -27,7 +30,6 @@ namespace DestinySender {
    {"Could not save settings: {0}","設定を保存できません: {0}"},
    {"Retry initial setup with TEST / START.","初回準備はTEST / STARTで再試行できます。"},
    {"PREPARING FFMPEG…","FFmpegを準備中…"},
-   {"Process audio capture requires Windows build 20348 or later. Use Windows 11.","この音声取得方式はOSビルド20348以降が必要です。Windows 11を使用してください。"},
    {"Enter an OUTPUT URL starting with {0}.","OUTPUTに {0} で始まる送信先URLを入力してください。"},
    {"rtmp:// or rtmps://","rtmp:// または rtmps://"},
    {"This version supports SRT / RTMP. WHIP is disabled.","この版はSRT / RTMPに対応しています。WHIPは無効です。"},
@@ -59,6 +61,7 @@ namespace DestinySender {
     if(source!=null)root.Text=T(language,source.Value);
    }
    foreach(Control child in root.Controls)Apply(child,language);
+   if(root is Form&&!root.Text.EndsWith(" "+Theme.Version,StringComparison.Ordinal))root.Text+=" "+Theme.Version;
   }
  }
 }

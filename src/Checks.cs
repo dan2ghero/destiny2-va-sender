@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,6 +9,8 @@ namespace DestinySender {
   public static int Run(string path) {
    var results=new List<string>();
    try {
+    Require(Compatibility.CanAttempt(19045)&&Compatibility.CanAttempt(19041)&&Compatibility.CanAttempt(22631)&&!Compatibility.CanAttempt(18363),"Windows 10 compatibility boundary");
+    results.Add("PASS: Win10 builds 19041/19045 and Win11 may attempt API activation; older builds rejected.");
     foreach(string size in new[]{"960x540","1280x720","1920x1080"})foreach(int fps in new[]{30,60})foreach(string protocol in new[]{"RTMP","SRT"})foreach(string adjust in new[]{"CROP","COMPRESS","LETTER-BOX"})foreach(string video in new[]{"H264 (CPU)","H264 (NVEnc)","H264 (AMD)"}) {
      var c=new Config{Size=size,Fps=fps,Protocol=protocol,Adjustment=adjust,Video=video};var a=c.Command("srt://example:1935?x=a&y=b");
      int expected=size=="960x540"?(fps==30?3000:4000):size=="1280x720"?(fps==30?4500:6000):(fps==30?6000:8000);
@@ -38,6 +40,11 @@ namespace DestinySender {
     Require(!new Config{Protocol="SRT"}.IsOutputUrlValid("http://localhost/whip"),"SRT scheme restriction");
     Require(!new Config{Protocol="RTMP"}.IsOutputUrlValid("http://localhost/whip"),"RTMP scheme restriction");
     results.Add("PASS: WHIP disabled; old WHIP settings migrate to SRT with CUSTOM off while retaining size/FPS; RTMP CUSTOM audio options are not duplicated.");
+    Require(new Config().AudioFilter()=="aresample=async=1000:first_pts=0","default sync unchanged");
+    Require(new Config{AudioSyncMs=-200}.AudioFilter().EndsWith("atrim=start=0.2,asetpts=PTS-STARTPTS"),"advance audio");
+    Require(new Config{AudioSyncMs=200}.AudioFilter().EndsWith("adelay=200:all=1"),"delay audio");
+    rejected=false;try{new Config{AudioSyncMs=2001}.AudioFilter();}catch(ArgumentException){rejected=true;}Require(rejected,"sync limit");
+    results.Add("PASS: sync 0 leaves audio unchanged, -200ms advances audio, +200ms delays audio, range is bounded.");
     File.WriteAllLines(path,results);return 0;
    }catch(Exception e){results.Add("FAIL: "+e);File.WriteAllLines(path,results);return 1;}
   }

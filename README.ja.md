@@ -1,6 +1,7 @@
-# destiny2-va-sender
+﻿# destiny2-va-sender v1.1.0
 
-**動作対象：Windows 11のみ（Works only on Windows 11）**
+**動作対象：Windows 10 22H2 / Windows 11（x64）**
+
 
 SRT / RTMPに対応するDestiny 2の映像・プロセス音声送信アプリです。
 
@@ -52,7 +53,7 @@ RTMPではCUSTOMの音声コーデック・ビットレート・チャンネル�
 
 ## 動作環境・制限
 
-- Windows 11 x64 / .NET Framework 4.8 (Windows 11標準搭載)。.NET 8 Runtimeの追加インストールは不要です。
+- Windows 10/11 x64 / .NET Framework 4.8。.NET 8 Runtimeの追加インストールは不要です。
 - NVIDIA/AMD方式はそれぞれ対応GPUとドライバーが必要です。
 - FFmpegはBtbN N-124714-g49a77d37be-20260531を使用します。
 - 取得対象はdestiny2.exeとその子プロセスの音声です。
@@ -66,3 +67,18 @@ RTMPではCUSTOMの音声コーデック・ビットレート・チャンネル�
 ## ソースとビルド
 
 srcに全ソースを含みます。Windowsのビルド用PCに.NET SDK 8と.NET Framework 4.8を用意し、powershell -ExecutionPolicy Bypass -File .\build.ps1を実行します。NuGetパッケージの復元は不要です。実行ポリシーの指定はそのプロセスだけに適用します。
+
+## 音声同期補正
+
+SETTING → AUDIO SYNC (ms) で調整できます。初期値0、範囲-2000～+2000ms。音声が映像より約0.2秒遅い場合は-200msを試してください。負の値は先頭音声を指定時間だけ除き、正の値は先頭に無音を追加します。通常・CUSTOM・TESTに適用し、設定を保存します。ネットワーク全体の遅延を短縮する設定ではありません。
+
+## 動作確認環境
+
+利用者から以下の環境で動作確認の報告をいただいています。
+
+| OS | GPU |
+|---|---|
+| Windows 10 22H2 / 19045.6466 | RTX 2060 6GB |
+| Windows 11 Home 25H2 / 26200.9711 | RTX 3060 12GB |
+
+すべての機器・ドライバー・アプリケーションの組み合わせを保証するものではありません。仮想音声ドライバーの追加は不要です。

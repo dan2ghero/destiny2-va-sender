@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $base=$PSScriptRoot
 $sdk=(& dotnet --list-sdks | Select-Object -Last 1) -replace '^([^ ]+) \[(.*)\]$','$2\$1'
 $compiler=Join-Path $sdk 'Roslyn\bincore\csc.dll'
@@ -9,6 +9,6 @@ $sources=Get-ChildItem (Join-Path $base 'src') -Filter '*.cs' | Where-Object Nam
 & dotnet $compiler @common /target:winexe ('/out:'+(Join-Path $base 'destiny2-va-sender.exe')) @sources
 if($LASTEXITCODE -ne 0){throw 'UI compile failed'}
 New-Item -ItemType Directory -Force (Join-Path $base 'tools') | Out-Null
-& dotnet $compiler @common /nullable:enable /target:exe ('/out:'+(Join-Path $base 'tools\DestinyAudio.exe')) (Join-Path $base 'src\AudioCapture.cs')
+& dotnet $compiler @common /nullable:enable /target:exe ('/out:'+(Join-Path $base 'tools\DestinyAudio.exe')) (Join-Path $base 'src\AudioCapture.cs') (Join-Path $base 'src\Compatibility.cs') (Join-Path $base 'src\AssemblyInfo.cs')
 if($LASTEXITCODE -ne 0){throw 'Audio helper compile failed'}
 Write-Host 'Build OK (.NET Framework 4.8 x64; no NuGet packages)'
